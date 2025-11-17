@@ -653,12 +653,12 @@ module.exports = (_ => {
 		const JellyfinControlsCoverComponent = props => {
 			if (props.media && props.media.imageUrl) {
 				return BDFDB.ReactUtils.createElement("img", {
-					className: BDFDB.disCN._jellyfincontrolscover,
+					className: "jellyfinControls-cover",
 					src: props.media.imageUrl
 				});
 			}
 			return BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.SvgIcon, {
-				className: BDFDB.disCN._jellyfincontrolscover,
+				className: "jellyfinControls-cover",
 				width: "100%",
 				height: "100%",
 				name: BDFDB.LibraryComponents.SvgIcon.Names.QUESTIONMARK_ACTIVITY
@@ -836,43 +836,46 @@ module.exports = (_ => {
 			}
 
 			render() {
-				if (!this.props.media || this.props.noSession) return null;
+				// Update media info from current playback state
+				if (playbackState.item) {
+					this.props.media = {
+						title: playbackState.item.Name || "Unknown Title",
+						artist: playbackState.item.AlbumArtist || (playbackState.item.Artists && playbackState.item.Artists.join(", ")) || "Unknown Artist",
+						type: playbackState.item.Type || "Audio",
+						imageUrl: playbackState.item.imageUrl || ""
+					};
+				}
+
+				if (!this.props.media) return null;
+				currentVolume = this.props.draggingVolume ? currentVolume : (playbackState.volume_percent || 100);
+
+			// Calculate noSession dynamically based on current state
+			let noSession = !playbackState.sessionId && !audioElement && !playbackState.item;
 
 				return BDFDB.ReactUtils.createElement("div", {
-					className: BDFDB.DOMUtils.formatClassName(BDFDB.disCN._jellyfincontrolscontainer, !playbackState.is_playing && BDFDB.disCN._jellyfincontrolscontainerpaused, this.props.maximized && BDFDB.disCN._jellyfincontrolscontainermaximized, this.props.timeline && BDFDB.disCN._jellyfincontrolscontainerwithtimeline),
+					className: BDFDB.DOMUtils.formatClassName("jellyfinControls-container", !playbackState.is_playing && "jellyfinControls-container-paused", this.props.timeline && "jellyfinControls-container-with-timeline"),
 					children: [
 						BDFDB.ReactUtils.createElement("div", {
-							className: BDFDB.disCN._jellyfincontrolscontainerinner,
+							className: "jellyfinControls-container-inner",
 							children: [
-								BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.Clickable, {
-									className: BDFDB.disCN._jellyfincontrolscoverwrapper,
-									onClick: _ => {
-										this.props.maximized = !this.props.maximized;
-										BDFDB.DataUtils.save(this.props.maximized, _this, "playerState", "maximized");
-										BDFDB.ReactUtils.forceUpdate(this);
-									},
-									children: [
-										BDFDB.ReactUtils.createElement(JellyfinControlsCoverComponent, {
-											media: this.props.media
-										}),
-										BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.SvgIcon, {
-											className: BDFDB.disCN._jellyfincontrolscovermaximizer,
-											name: BDFDB.LibraryComponents.SvgIcon.Names.LEFT_CARET
-										})
-									]
+								BDFDB.ReactUtils.createElement("div", {
+									className: "jellyfinControls-cover-wrapper",
+									children: BDFDB.ReactUtils.createElement(JellyfinControlsCoverComponent, {
+										media: this.props.media
+									})
 								}),
 								BDFDB.ReactUtils.createElement("div", {
-									className: BDFDB.disCN._jellyfincontrolsdetails,
+									className: "jellyfinControls-details",
 									children: [
 										BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.TextElement, {
-											className: BDFDB.disCN._jellyfincontrolsmedia,
+											className: "jellyfinControls-media",
 											color: BDFDB.LibraryComponents.TextElement.Colors.PRIMARY,
 											children: BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.TextScroller, {
 												children: this.props.media.title
 											})
 										}),
 										BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.TextElement, {
-											className: BDFDB.disCNS.subtext + BDFDB.disCN._jellyfincontrolsartist,
+											className: BDFDB.disCNS.subtext + "jellyfinControls-artist",
 											color: BDFDB.LibraryComponents.TextElement.Colors.CUSTOM,
 											size: BDFDB.LibraryComponents.TextElement.Sizes.SIZE_12,
 											children: BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.TextScroller, {
@@ -881,156 +884,177 @@ module.exports = (_ => {
 										})
 									]
 								}),
-								BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.Flex, {
-									wrap: BDFDB.LibraryComponents.Flex.Wrap.NO_WRAP,
-									grow: 0,
-									children: [
-										BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.Button, {
-											children: "Browse",
-											size: BDFDB.LibraryComponents.Button.Sizes.TINY,
-											color: BDFDB.LibraryComponents.Button.Colors.BRAND,
-											onClick: _ => {
-												console.log("Browse button clicked");
-												if (!jellyfinConfig.serverUrl || !jellyfinConfig.accessToken) {
-													BDFDB.NotificationUtils.toast("Please configure Jellyfin in plugin settings first", {type: "danger"});
-													return;
-												}
-												console.log("Opening modal...");
-												BDFDB.LibraryModules.ModalUtils.openModal(modalProps => {
-													return BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.ModalComponents.ModalRoot, {
-														...modalProps,
-														size: BDFDB.LibraryComponents.ModalComponents.ModalSize.MEDIUM,
-														children: [
-															BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.ModalComponents.ModalHeader, {
-																children: [
-																	BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.FormComponents.FormTitle, {
-																		tag: "h4",
-																		children: "Browse Music"
-																	}),
-																	BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.ModalComponents.ModalCloseButton, {
-																		onClick: modalProps.onClose
+								BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.TooltipContainer, {
+									text: noSession ? "No active playback session" : null,
+									tooltipConfig: {color: "red"},
+									children: BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.Flex, {
+										wrap: BDFDB.LibraryComponents.Flex.Wrap.NO_WRAP,
+										grow: 0,
+										children: [
+											BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.Button, {
+												children: "Browse",
+												size: BDFDB.LibraryComponents.Button.Sizes.TINY,
+												color: BDFDB.LibraryComponents.Button.Colors.BRAND,
+												onClick: _ => {
+													if (!jellyfinConfig.serverUrl || !jellyfinConfig.accessToken) {
+														BDFDB.NotificationUtils.toast("Please configure Jellyfin in plugin settings first", {type: "danger"});
+														return;
+													}
+													BDFDB.LibraryModules.ModalUtils.openModal(modalProps => {
+														return BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.ModalComponents.ModalRoot, {
+															...modalProps,
+															size: BDFDB.LibraryComponents.ModalComponents.ModalSize.MEDIUM,
+															children: [
+																BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.ModalComponents.ModalHeader, {
+																	children: [
+																		BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.FormComponents.FormTitle, {
+																			tag: "h4",
+																			children: "Browse Music"
+																		}),
+																		BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.ModalComponents.ModalCloseButton, {
+																			onClick: modalProps.onClose
+																		})
+																	]
+																}),
+																BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.ModalComponents.ModalContent, {
+																	children: BDFDB.ReactUtils.createElement(MusicBrowserModal, {
+																		onClose: modalProps.onClose
 																	})
-																]
-															}),
-															BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.ModalComponents.ModalContent, {
-																children: BDFDB.ReactUtils.createElement(MusicBrowserModal, {
-																	onClose: modalProps.onClose
 																})
-															})
-														]
-													});
-												});
-											}
-										}),
-										BDFDB.ReactUtils.createElement(JellyfinControlsButtonComponent, {
-											type: "shuffle",
-											player: this,
-											active: playbackState.shuffle_state,
-											onClick: _ => {
-												playbackState.shuffle_state = !playbackState.shuffle_state;
-												this.request("shuffle", {
-													state: playbackState.shuffle_state
-												});
-												BDFDB.ReactUtils.forceUpdate(this);
-											}
-										}),
-										BDFDB.ReactUtils.createElement(JellyfinControlsButtonComponent, {
-											type: "previous",
-											player: this,
-											onClick: _ => {
-												if (previousIsClicked || !_this.settings.general.doubleBack) {
-													previousIsClicked = false;
-													BDFDB.TimeUtils.clear(previousDoubleTimeout);
-													this.request("previous");
-												}
-												else {
-													previousIsClicked = true;
-													previousDoubleTimeout = BDFDB.TimeUtils.timeout(_ => {
-														previousIsClicked = false;
-														this.request("seek", {
-															position_ms: 0
+															]
 														});
-													}, 300);
-												}
-											}
-										}),
-										BDFDB.ReactUtils.createElement(JellyfinControlsButtonComponent, {
-											type: "pauseplay",
-											player: this,
-											icon: playbackState.is_playing ? 0 : 1,
-											onClick: _ => {
-												if (playbackState.is_playing) this.request("pause");
-												else this.request("play");
-												playbackState.is_playing = !playbackState.is_playing;
-												BDFDB.ReactUtils.forceUpdate(this);
-											}
-										}),
-										BDFDB.ReactUtils.createElement(JellyfinControlsButtonComponent, {
-											type: "next",
-											player: this,
-											onClick: _ => this.request("next")
-										}),
-										BDFDB.ReactUtils.createElement(JellyfinControlsButtonComponent, {
-											type: "repeat",
-											player: this,
-											icon: playbackState.repeat_state === "RepeatOne" ? 1 : 0,
-											active: playbackState.repeat_state !== "RepeatNone",
-											onClick: _ => {
-												let currentIndex = repeatStates.indexOf(playbackState.repeat_state);
-												playbackState.repeat_state = repeatStates[(currentIndex + 1) % repeatStates.length];
-												this.request("repeat", {
-													state: playbackState.repeat_state
-												});
-												BDFDB.ReactUtils.forceUpdate(this);
-											}
-										}),
-										BDFDB.ReactUtils.createElement(JellyfinControlsButtonComponent, {
-											type: "volume",
-											player: this,
-											icon: Math.ceil((playbackState.volume_percent || 100)/34),
-											onContextMenu: _ => {
-												if (playbackState.volume_percent == 0) {
-													if (lastVolume) this.request("volume", {
-														volume_percent: lastVolume
 													});
 												}
-												else {
-													lastVolume = playbackState.volume_percent;
-													this.request("volume", {
-														volume_percent: 0
-													});
+											}),
+											BDFDB.ReactUtils.createElement(JellyfinControlsButtonComponent, {
+												type: "share",
+												player: this,
+												onClick: _ => {
+													if (playbackState.item && playbackState.item.Id) {
+														let itemUrl = `${normalizeServerUrl(jellyfinConfig.serverUrl)}/web/index.html#!/item?id=${playbackState.item.Id}&serverId=${jellyfinConfig.userId}`;
+														BDFDB.LibraryModules.WindowUtils.copy(itemUrl);
+														BDFDB.NotificationUtils.toast(_this.labels.toast_copyurl_success, {type: "success"});
+													} else {
+														BDFDB.NotificationUtils.toast(_this.labels.toast_copyurl_fail, {type: "danger"});
+													}
 												}
-											},
-											renderPopout: instance => {
-												let changeTimeout;
-												return BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.Slider, {
-													className: BDFDB.disCN._jellyfincontrolsvolumeslider,
-													defaultValue: playbackState.volume_percent || 100,
-													digits: 0,
-													barStyles: {height: 6, top: 3},
-													fillStyles: {backgroundColor: "var(--JC-jellyfin-purple)"},
-													onValueRender: value => {
-														if (playbackState.volume_percent == value) return value + "%";
-														this.props.draggingVolume = true;
-														playbackState.volume_percent = value;
-														BDFDB.TimeUtils.clear(changeTimeout);
-														changeTimeout = BDFDB.TimeUtils.timeout(_ => this.props.draggingVolume && this.request("volume", {
-															volume_percent: playbackState.volume_percent
-														}), 500);
-														return value + "%";
-													},
-													onValueChange: value => {
-														if (playbackState.volume_percent == value) return;
-														this.props.draggingVolume = false;
-														playbackState.volume_percent = value;
-														this.request("volume", {
-															volume_percent: playbackState.volume_percent
+											}),
+											BDFDB.ReactUtils.createElement(JellyfinControlsButtonComponent, {
+												type: "shuffle",
+												player: this,
+												active: playbackState.shuffle_state,
+												disabled: noSession,
+												onClick: _ => {
+													playbackState.shuffle_state = !playbackState.shuffle_state;
+													this.request("shuffle", {
+														state: playbackState.shuffle_state
+													});
+													BDFDB.ReactUtils.forceUpdate(this);
+												}
+											}),
+											BDFDB.ReactUtils.createElement(JellyfinControlsButtonComponent, {
+												type: "previous",
+												player: this,
+												disabled: noSession,
+												onClick: _ => {
+													if (previousIsClicked || !_this.settings.general.doubleBack) {
+														previousIsClicked = false;
+														BDFDB.TimeUtils.clear(previousDoubleTimeout);
+														this.request("previous");
+													}
+													else {
+														previousIsClicked = true;
+														previousDoubleTimeout = BDFDB.TimeUtils.timeout(_ => {
+															previousIsClicked = false;
+															this.request("seek", {
+																position_ms: 0
+															});
+														}, 300);
+													}
+												}
+											}),
+											BDFDB.ReactUtils.createElement(JellyfinControlsButtonComponent, {
+												type: "pauseplay",
+												player: this,
+												icon: playbackState.is_playing ? 0 : 1,
+												disabled: noSession,
+												onClick: _ => {
+													if (playbackState.is_playing) this.request("pause");
+													else this.request("play");
+													playbackState.is_playing = !playbackState.is_playing;
+													BDFDB.ReactUtils.forceUpdate(this);
+												}
+											}),
+											BDFDB.ReactUtils.createElement(JellyfinControlsButtonComponent, {
+												type: "next",
+												player: this,
+												disabled: noSession,
+												onClick: _ => this.request("next")
+											}),
+											BDFDB.ReactUtils.createElement(JellyfinControlsButtonComponent, {
+												type: "repeat",
+												player: this,
+												icon: playbackState.repeat_state === "RepeatOne" ? 1 : 0,
+												active: playbackState.repeat_state !== "RepeatNone",
+												disabled: noSession,
+												onClick: _ => {
+													let currentIndex = repeatStates.indexOf(playbackState.repeat_state);
+													playbackState.repeat_state = repeatStates[(currentIndex + 1) % repeatStates.length];
+													this.request("repeat", {
+														state: playbackState.repeat_state
+													});
+													BDFDB.ReactUtils.forceUpdate(this);
+												}
+											}),
+											BDFDB.ReactUtils.createElement(JellyfinControlsButtonComponent, {
+												type: "volume",
+												player: this,
+												icon: Math.ceil(currentVolume/34),
+												disabled: noSession,
+												onContextMenu: _ => {
+													if (currentVolume == 0) {
+														if (lastVolume) this.request("volume", {
+															volume_percent: lastVolume
 														});
 													}
-												});
-											}
-										})
-									].filter(n => n)
+													else {
+														lastVolume = currentVolume;
+														this.request("volume", {
+															volume_percent: 0
+														});
+													}
+												},
+												renderPopout: instance => {
+													let changeTimeout;
+													return BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.Slider, {
+														className: "jellyfinControls-volume-slider",
+														defaultValue: currentVolume,
+														digits: 0,
+														barStyles: {height: 6, top: 3},
+														fillStyles: {backgroundColor: "var(--JC-jellyfin-purple)"},
+														onValueRender: value => {
+															if (currentVolume == value) return value + "%";
+															this.props.draggingVolume = true;
+															currentVolume = value;
+															BDFDB.TimeUtils.clear(changeTimeout);
+															changeTimeout = BDFDB.TimeUtils.timeout(_ => this.props.draggingVolume && this.request("volume", {
+																volume_percent: currentVolume
+															}), 500);
+															return value + "%";
+														},
+														onValueChange: value => {
+															if (currentVolume == value) return;
+															this.props.draggingVolume = false;
+															currentVolume = value;
+															this.request("volume", {
+																volume_percent: currentVolume
+															});
+														}
+													});
+												}
+											})
+										].filter(n => n)
+									})
 								})
 							]
 						}),
@@ -1045,14 +1069,22 @@ module.exports = (_ => {
 
 		const JellyfinControlsButtonComponent = class JellyfinControlsButton extends BdApi.React.Component {
 			render() {
-				if (_this.settings.general.hideDisabled && this.props.disabled) return null;
-				let playerSize = this.props.player.props.maximized ? "big" : "small";
-				if (!playerSize || !_this.settings.buttons[this.props.type] || !_this.settings.buttons[this.props.type][playerSize]) return null;
+				if (!_this || !_this.defaults || !_this.defaults.buttons || !_this.defaults.buttons[this.props.type]) return null;
+				if (_this.settings && _this.settings.general && _this.settings.general.hideDisabled && this.props.disabled) return null;
+
+				let playerSize = "small";
+				// Check settings first, fall back to defaults
+				let buttonSettings = (_this.settings && _this.settings.buttons && _this.settings.buttons[this.props.type]) || _this.defaults.buttons[this.props.type].value;
+				if (!buttonSettings || !buttonSettings[playerSize]) return null;
+
+				let iconIndex = this.props.icon !== undefined ? this.props.icon : 0;
+				let iconChar = _this.defaults.buttons[this.props.type].icons[iconIndex] || _this.defaults.buttons[this.props.type].icons[0] || "?";
+
 				let button = BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.Button, BDFDB.ObjectUtils.exclude(Object.assign({}, this.props, {
-					className: BDFDB.DOMUtils.formatClassName(BDFDB.disCN.accountinfobutton, this.props.disabled ? BDFDB.disCN.accountinfobuttondisabled : BDFDB.disCN.accountinfobuttonenabled, this.props.active && BDFDB.disCN._jellyfincontrolsbuttonactive),
+					className: BDFDB.DOMUtils.formatClassName(BDFDB.disCN.accountinfobutton, this.props.disabled ? BDFDB.disCN.accountinfobuttondisabled : BDFDB.disCN.accountinfobuttonenabled, this.props.active && "jellyfinControls-button-active"),
 					look: BDFDB.LibraryComponents.Button.Looks.BLANK,
 					size: BDFDB.LibraryComponents.Button.Sizes.NONE,
-					children: _this.defaults.buttons[this.props.type] && _this.defaults.buttons[this.props.type].icons ? (_this.defaults.buttons[this.props.type].icons[this.props.icon] || _this.defaults.buttons[this.props.type].icons[0]) : "?",
+					children: iconChar,
 					onClick: this.props.disabled ? _ => {} : this.props.onClick,
 					onContextMenu: this.props.disabled ? _ => {} : this.props.onContextMenu,
 				}), "active", "disabled", "renderPopout", "icon", "type", "player"));
@@ -1094,29 +1126,32 @@ module.exports = (_ => {
 				currentTime = currentTime > maxTime ? maxTime : currentTime;
 
 				return BDFDB.ReactUtils.createElement("div", {
-					className: BDFDB.disCN._jellyfincontrolstimeline,
+					className: "jellyfinControls-timeline",
 					children: [
 						BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.Clickable, {
-							className: BDFDB.disCN._jellyfincontrolsbar,
+							className: "jellyfinControls-bar",
 							children: [
 								BDFDB.ReactUtils.createElement("div", {
-									className: BDFDB.disCN._jellyfincontrolsbarfill,
+									className: "jellyfinControls-bar-fill",
 									style: {width: `${currentTime / maxTime * 100}%`}
 								}),
 								BDFDB.ReactUtils.createElement("div", {
-									className: BDFDB.disCN._jellyfincontrolsbargrabber,
+									className: "jellyfinControls-bar-grabber",
 									style: {left: `${currentTime / maxTime * 100}%`}
 								})
 							],
 							onClick: event => {
-								let rects = BDFDB.DOMUtils.getRects(BDFDB.DOMUtils.getParent(BDFDB.dotCN._jellyfincontrolsbar, event.target));
-								this.props.controls.request("seek", {
-									position_ms: Math.round(BDFDB.NumberUtils.mapRange([rects.left, rects.left + rects.width], [0, maxTime], event.clientX))
+								let rects = BDFDB.DOMUtils.getRects(BDFDB.DOMUtils.getParent(".jellyfinControls-bar", event.target));
+								if (playbackState.duration_ms) {
+									let seekTime = Math.round(BDFDB.NumberUtils.mapRange([rects.left, rects.left + rects.width], [0, playbackState.duration_ms], event.clientX));
+									this.props.controls.request("seek", {
+									position_ms: seekTime
 								});
+								}
 							}
 						}),
 						BDFDB.ReactUtils.createElement("div", {
-							className: BDFDB.disCN._jellyfincontrolsbartext,
+							className: "jellyfinControls-bar-text",
 							children: [
 								BDFDB.ReactUtils.createElement(BDFDB.LibraryComponents.TextElement, {
 									size: BDFDB.LibraryComponents.TextElement.Sizes.SIZE_10,
@@ -1137,6 +1172,7 @@ module.exports = (_ => {
 			onLoad () {
 				_this = this;
 
+
 				this.defaults = {
 					general: {
 						addTimeline: 		{value: true,		description: "Shows the Media Timeline in the Controls"},
@@ -1144,12 +1180,13 @@ module.exports = (_ => {
 						doubleBack: 		{value: true,		description: "Requires the User to press the Back Button twice to go to previous Track"}
 					},
 					buttons: {
-						shuffle: 		{value: {small: false, big: true},		icons: ["🔀"],						description: "Shuffle"},
-						previous: 		{value: {small: true, big: true},		icons: ["⏮"],						description: "Previous"},
-						pauseplay: 		{value: {small: true, big: true},		icons: ["⏸", "▶"],					description: "Pause/Play"},
-						next: 			{value: {small: true, big: true},		icons: ["⏭"],						description: "Next"},
-						repeat: 		{value: {small: false, big: true},		icons: ["🔁", "🔂"],					description: "Repeat"},
-						volume: 		{value: {small: false, big: true},		icons: ["🔇", "🔈", "🔉", "🔊"],			description: "Volume"}
+				share: 			{value: {small: false, big: true},		icons: ["🔗"],						description: "Share"},
+				shuffle: 		{value: {small: false, big: true},		icons: ["🔀"],						description: "Shuffle"},
+				previous: 		{value: {small: true, big: true},		icons: ["⏮"],						description: "Previous"},
+				pauseplay: 		{value: {small: true, big: true},		icons: ["⏸", "▶"],				description: "Pause/Play"},
+				next: 			{value: {small: true, big: true},		icons: ["⏭"],						description: "Next"},
+				repeat: 		{value: {small: false, big: true},		icons: ["🔁", "🔂"],				description: "Repeat"},
+				volume: 		{value: {small: false, big: true},		icons: ["🔇", "🔈", "🔉", "🔊"],				description: "Volume"}
 					},
 					config: {
 						serverUrl: 		{value: "",			description: "Jellyfin Server URL"},
@@ -1166,38 +1203,41 @@ module.exports = (_ => {
 						display: flex;
 						flex-direction: column;
 					}
-					${BDFDB.dotCN.channelpanels}:has(${BDFDB.dotCN._jellyfincontrolscontainer}:first-child) {
+					${BDFDB.dotCN.channelpanels}:has(.jellyfinControls-container:first-child) {
 						overflow: hidden;
 					}
-					${BDFDB.dotCN._jellyfincontrolscontainer} {
-						display: flex;
-						flex-direction: column;
+					.jellyfinControls-container {
+						display: flex !important;
+						flex-direction: column !important;
 						justify-content: center;
 						min-height: 52px;
+						max-height: 80px;
 						border-bottom: 1px solid var(--background-modifier-accent);
 						padding: 0 8px;
 						box-sizing: border-box;
 						order: -1;
 					}
-					${BDFDB.dotCN.themelight + BDFDB.dotCNS.themecustombackground + BDFDB.dotCN._jellyfincontrolscontainer} {
+					${BDFDB.dotCN.themelight + BDFDB.dotCNS.themecustombackground}.jellyfinControls-container {
 						background: var(--bg-overlay-3);
 					}
-					${BDFDB.dotCN.themedark + BDFDB.dotCNS.themecustombackground + BDFDB.dotCN._jellyfincontrolscontainer} {
+					${BDFDB.dotCN.themedark + BDFDB.dotCNS.themecustombackground}.jellyfinControls-container {
 						background: var(--bg-overlay-1);
 					}
-					${BDFDB.dotCN._jellyfincontrolscontainer + BDFDB.dotCN._jellyfincontrolscontainerwithtimeline} {
+					.jellyfinControls-container.jellyfinControls-container-with-timeline {
 						padding-top: 8px;
 					}
-					${BDFDB.dotCN._jellyfincontrolscontainerinner} {
-						display: flex;
-						align-items: center;
+					.jellyfinControls-container-inner {
+						display: flex !important;
+						flex-direction: row !important;
+						align-items: center !important;
 						font-size: 14px;
 						width: 100%;
+						gap: 8px;
 					}
-					${BDFDB.dotCN._jellyfincontrolstimeline} {
+					.jellyfinControls-timeline {
 						margin: 6px 0 4px 0;
 					}
-					${BDFDB.dotCN._jellyfincontrolsbar} {
+					.jellyfinControls-bar {
 						--bar-size: 4px;
 						--grabber-size: 12px;
 						position: relative;
@@ -1206,17 +1246,17 @@ module.exports = (_ => {
 						height: var(--bar-size);
 						margin-bottom: 4px;
 					}
-					${BDFDB.dotCN._jellyfincontrolsbarfill} {
+					.jellyfinControls-bar-fill {
 						border-radius: 2px;
 						height: 100%;
 						min-width: 4px;
 						border-radius: 2px;
 						background: var(--text-secondary);
 					}
-					${BDFDB.dotCN._jellyfincontrolstimeline}:hover ${BDFDB.dotCN._jellyfincontrolsbarfill} {
+					.jellyfinControls-timeline:hover .jellyfinControls-bar-fill {
 						background: var(--JC-jellyfin-purple);
 					}
-					${BDFDB.dotCN._jellyfincontrolsbargrabber} {
+					.jellyfinControls-bar-grabber {
 						display: none;
 						position: absolute;
 						top: 0;
@@ -1228,102 +1268,90 @@ module.exports = (_ => {
 						background: var(--text-secondary);
 						border-radius: 50%;
 					}
-					${BDFDB.dotCN._jellyfincontrolstimeline}:hover ${BDFDB.dotCN._jellyfincontrolsbargrabber} {
+					.jellyfinControls-timeline:hover .jellyfinControls-bar-grabber {
 						display: block;
 					}
-					${BDFDB.dotCN._jellyfincontrolsbartext} {
+					.jellyfinControls-bar-text {
 						display: flex;
 						align-items: center;
 						justify-content: space-between;
 					}
-					${BDFDB.dotCN._jellyfincontrolscoverwrapper} {
-						position: relative;
-						width: 32px;
-						min-width: 32px;
-						height: 32px;
-						min-height: 32px;
-						margin-right: 8px;
-						border-radius: 4px;
-						overflow: hidden;
-						transition: border-radius .3s ease, margin .3s ease, width .3s ease, height .3s ease;
+					.jellyfinControls-cover-wrapper,
+					.jellyfinControls-container .jellyfinControls-cover-wrapper,
+					.jellyfinControls-container div[class*="jellyfinControls-cover-wrapper"] {
+						position: relative !important;
+						width: 32px !important;
+						min-width: 32px !important;
+						max-width: 32px !important;
+						height: 32px !important;
+						min-height: 32px !important;
+						max-height: 32px !important;
+						margin-right: 8px !important;
+						border-radius: 4px !important;
+						overflow: hidden !important;
+						flex-shrink: 0 !important;
+						flex-grow: 0 !important;
 					}
-					${BDFDB.dotCN._jellyfincontrolscover} {
-						display: block;
-						width: 100%;
-						height: 100%;
+					.jellyfinControls-cover {
+						display: block !important;
+						width: 32px !important;
+						height: 32px !important;
+						max-width: 32px !important;
+						max-height: 32px !important;
 						color: var(--text-primary);
 						object-fit: cover;
 					}
-					${BDFDB.dotCN._jellyfincontrolscovermaximizer} {
-						visibility: hidden;
-						position: absolute;
-						background-color: rgba(0, 0, 0, 0.5);
-						color: rgba(255, 255, 255, 0.5);
-						top: 0;
-						right: 0;
-						border-radius: 50%;
-						width: 12px;
-						height: 12px;
-						padding: 3px;
-						transform: rotate(90deg);
-						transition: width .3s ease, height .3s ease, transform .3s ease;
-						pointer-events: none;
-					}
-					${BDFDB.dotCN._jellyfincontrolscoverwrapper}:hover ${BDFDB.dotCN._jellyfincontrolscovermaximizer} {
-						visibility: visible;
-					}
-					${BDFDB.dotCN._jellyfincontrolsdetails} {
+					.jellyfinControls-details {
 						flex-grow: 1;
 						margin-right: 4px;
 						min-width: 0;
 						user-select: text;
 					}
-					${BDFDB.dotCN._jellyfincontrolsmedia} {
+					.jellyfinControls-media {
 						font-weight: 500;
 					}
-					${BDFDB.dotCN._jellyfincontrolsartist} {
+					.jellyfinControls-artist {
 						font-weight: 300;
 					}
-					${BDFDB.dotCN._jellyfincontrolsvolumeslider} {
+					.jellyfinControls-volume-slider {
 						height: 12px;
 						width: 140px;
 						margin: 5px;
 					}
-					${BDFDB.dotCNS._jellyfincontrolscontainer + BDFDB.dotCN.accountinfobuttondisabled} {
+					.jellyfinControls-container ${BDFDB.dotCN.accountinfobuttondisabled} {
 						cursor: no-drop;
 					}
-					${BDFDB.dotCNS._jellyfincontrolscontainer + BDFDB.dotCN.accountinfobutton + BDFDB.dotCN._jellyfincontrolsbuttonactive} {
+					.jellyfinControls-container ${BDFDB.dotCN.accountinfobutton}.jellyfinControls-button-active {
 						color: var(--JC-jellyfin-purple) !important;
 					}
-					${BDFDB.dotCN._jellyfincontrolscontainer + BDFDB.dotCN._jellyfincontrolscontainermaximized} {
-						padding-top: 0;
+				${BDFDB.dotCN.accountinfobutton} {
+					width: 32px;
+					height: 32px;
+					min-width: 32px;
+					min-height: 32px;
+					display: flex;
+					align-items: center;
+					justify-content: center;
+					transition: color 0.17s ease;
+					font-size: 18px;
+				}
+				${BDFDB.dotCN.accountinfobutton}:hover {
+					color: var(--JC-jellyfin-purple) !important;
+				}
+					.jellyfinControls-settings-icon {
+						margin: 4px;
+						font-size: 16px;
 					}
-					${BDFDB.dotCN._jellyfincontrolscontainer + BDFDB.dotCNS._jellyfincontrolscontainermaximized + BDFDB.dotCN._jellyfincontrolscontainerinner} {
-						flex-direction: column;
-					}
-					${BDFDB.dotCN._jellyfincontrolscontainer + BDFDB.dotCNS._jellyfincontrolscontainermaximized + BDFDB.dotCN._jellyfincontrolsdetails} {
-						margin: 0 0 4px 0;
-						width: 100%;
-						text-align: center;
-					}
-					${BDFDB.dotCN._jellyfincontrolscontainer + BDFDB.dotCNS._jellyfincontrolscontainermaximized + BDFDB.dotCN._jellyfincontrolscoverwrapper} {
-						width: calc(100% + 16px);
-						height: 100%;
-						margin: 0 0 8px 0;
-						border-radius: 0;
-					}
-					${BDFDB.dotCN._jellyfincontrolscontainer + BDFDB.dotCNS._jellyfincontrolscontainermaximized + BDFDB.dotCN._jellyfincontrolscovermaximizer} {
-						top: 4px;
-						right: 4px;
-						width: 22px;
-						height: 22px;
-						padding: 5px;
-						transform: rotate(-90deg);
+					.jellyfinControls-settings-label {
+						margin-left: 10px;
 					}
 				`;
 			}
 
 			onStart () {
+				// Clear any old playerState data that might cause maximized view
+				BDFDB.DataUtils.remove(this, "playerState");
+
 				// Load saved config
 				let savedConfig = BDFDB.DataUtils.load(this, "config");
 				if (savedConfig && typeof savedConfig === 'object') {
@@ -1349,21 +1377,21 @@ module.exports = (_ => {
 					if (e.methodArguments[0] == "section" && e.methodArguments[1].className && e.methodArguments[1].className.indexOf(BDFDB.disCN.channelpanels) > -1) {
 						let parent = BDFDB.ReactUtils.findChild(e.methodArguments[1].children, {filter: n => n.props && BDFDB.ArrayUtils.is(n.props.children) && n.props.children.find(k => k && k.props && k.props.section == "Account Panel")});
 						if (parent) {
-							// Create mock media object - in production this would come from Jellyfin API
-							let mockMedia = {
-								title: "Sample Media",
-								artist: "Jellyfin",
-								type: "Music",
-								imageUrl: ""
+							// Get media from playback state or use defaults
+							let mediaInfo = {
+								title: playbackState.item?.Name || "No media playing",
+								artist: playbackState.item?.AlbumArtist || playbackState.item?.Artists?.join(", ") || "Unknown Artist",
+								type: playbackState.item?.Type || "Audio",
+								imageUrl: playbackState.item?.imageUrl || ""
 							};
 
 							parent.props.children.unshift(BDFDB.ReactUtils.createElement(JellyfinControlsComponent, {
 								key: "JELLYFIN_CONTROLS",
-								media: mockMedia,
-								sessionId: "test-session",
-								maximized: BDFDB.DataUtils.load(this, "playerState", "maximized"),
+								media: mediaInfo,
+								sessionId: playbackState.sessionId || null,
+								noSession: !playbackState.sessionId && !audioElement && !playbackState.item,
 								buttonStates: [],
-								timeline: this.settings.general.addTimeline
+								timeline: this.settings?.general?.addTimeline !== false
 							}, true));
 						}
 					}
@@ -1521,10 +1549,12 @@ module.exports = (_ => {
 										basis: 50,
 										grow: 0,
 										children: data.icons.map(icon => BDFDB.ReactUtils.createElement("div", {
+											className: "jellyfinControls-settings-icon",
 											children: icon
 										}))
 									}),
 									BDFDB.ReactUtils.createElement("div", {
+										className: "jellyfinControls-settings-label",
 										children: data.label
 									})
 								]
